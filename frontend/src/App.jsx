@@ -1,35 +1,38 @@
 import { useState, useEffect } from 'react';
 import MessageForm from './components/MessageForm';
 import MessageList from './components/MessageList';
-import { fetchMessages, createMessage, deleteMessage } from './api';
 
 export default function App() {
   const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Load messages from localStorage when the app starts
   useEffect(() => {
-    loadMessages();
+    try {
+      const stored = localStorage.getItem('messages');
+      if (stored) {
+        setMessages(JSON.parse(stored));
+      }
+    } catch {
+      setError('Could not load your messages.');
+    }
   }, []);
 
-  async function loadMessages() {
-    try {
-      const data = await fetchMessages();
-      setMessages(data);
-    } catch {
-      setError('Could not reach the quiet place right now.');
-    } finally {
-      setLoading(false);
-    }
-  }
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('messages', JSON.stringify(messages));
+  }, [messages]);
 
-  async function handleCreate(name, content) {
-    const newMessage = await createMessage(name, content);
+  function handleCreate(name, content) {
+    const newMessage = {
+      _id: Date.now(), // simple unique ID
+      name,
+      content,
+    };
     setMessages((prev) => [newMessage, ...prev]);
   }
 
-  async function handleDelete(id) {
-    await deleteMessage(id);
+  function handleDelete(id) {
     setMessages((prev) => prev.filter((m) => m._id !== id));
   }
 
@@ -46,8 +49,8 @@ export default function App() {
       <main className="app-main">
         <MessageForm onSubmit={handleCreate} />
         {error && <p className="app-error">{error}</p>}
-        {loading ? (
-          <p className="app-loading">Gathering your thoughts...</p>
+        {messages.length === 0 ? (
+          <p className="app-loading">No messages yet. Start typing!</p>
         ) : (
           <MessageList messages={messages} onDelete={handleDelete} />
         )}
